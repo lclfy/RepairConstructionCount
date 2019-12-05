@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RepairConstructionCount
 {
-    public class Construction
+    public class Construction : ICloneable
     {
         /*
         Id
@@ -28,7 +28,7 @@ List<SpecialCauses> 特殊原因
         public int _askConstructionTime { get; set; }
         public int _permitConstructionCount { get; set; }
         public int _permitConstructionTime { get; set; }
-        public List<SpecialCauses_Cons> _specialCauses {get;set;}
+        public List<SpecialCauses_ConsRepair> _specialCauses {get;set;}
 
         public Construction()
         {
@@ -42,12 +42,30 @@ List<SpecialCauses> 特殊原因
             _askConstructionTime = 0;
             _permitConstructionCount = 0;
             _permitConstructionTime = 0;
-            _specialCauses = new List<SpecialCauses_Cons>();
+            _specialCauses = new List<SpecialCauses_ConsRepair>();
+        }
+
+        public object Clone()
+        {
+            Construction _cons = new Construction();
+            _cons._id = this._id;
+            _cons._stationName = this._stationName;
+            _cons._departName = this._departName;
+            _cons._constructionDate = this._constructionDate;
+            _cons._plannedConstructionCount = this._plannedConstructionCount;
+            _cons._plannedConstructionTime = this._plannedConstructionTime;
+            _cons._askConstructionCount = this._askConstructionCount;
+            _cons._askConstructionTime = this._askConstructionTime;
+            _cons._permitConstructionCount = this._permitConstructionCount;
+            _cons._permitConstructionTime = this._permitConstructionTime;
+            _cons._specialCauses = this._specialCauses;
+
+            return _cons as object;//深复制
         }
     }
 
     //特殊原因
-    public class SpecialCauses_Cons
+    public class SpecialCauses_ConsRepair
     {
         //是否参加考核
         public bool _examine { get; set; }
@@ -58,7 +76,7 @@ List<SpecialCauses> 特殊原因
         //原因导致时间
         public int _causesTime { get; set; }
 
-        public SpecialCauses_Cons()
+        public SpecialCauses_ConsRepair()
         {
             _examine = false;
             _causesName = "";
