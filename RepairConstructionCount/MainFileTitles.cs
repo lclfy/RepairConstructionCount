@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RepairConstructionCount
 {
-    public class MainFileTitles
+    public class MainFileTitles : ICloneable
     {
         //文件名
         public string _fileName { get; set; }
@@ -42,6 +42,25 @@ namespace RepairConstructionCount
             _permitTime_row = 0;
             _specialCauses_title = new List<SpecialCauses_Title>();
             _demandRate_row = 0;
+        }
+
+        public object Clone()
+        {
+            MainFileTitles _r = new MainFileTitles();
+            _r._fileName = this._fileName;
+            _r._repairOrConstruction = this._repairOrConstruction;
+            _r._statisticsByController_column = this._statisticsByController_column;
+            _r._statisticsByDeparts_column = this._statisticsByDeparts_column;
+            _r._trainControllerTitle = this._trainControllerTitle;
+            _r._departTitle = this._departTitle;
+            _r._plannedCount_row = this._plannedCount_row;
+            _r._plannedTime_row = this._plannedTime_row;
+            _r._permitCount_row = this._permitCount_row;
+            _r._permitTime_row = this._permitTime_row;
+            _r._specialCauses_title = this._specialCauses_title;
+            _r._demandRate_row = this._demandRate_row;
+
+            return _r as object;//深复制
         }
 
     }

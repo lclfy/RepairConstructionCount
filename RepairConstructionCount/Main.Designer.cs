@@ -35,6 +35,8 @@
             this.mainExcelFile_lbl = new System.Windows.Forms.Label();
             this.subExcelFile_lbl = new System.Windows.Forms.Label();
             this.processing_lbl = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
+            this.stationController_rtb = new System.Windows.Forms.RichTextBox();
             this.SuspendLayout();
             // 
             // readMainFile_btn
@@ -43,12 +45,12 @@
             this.readMainFile_btn.ControlState = CCWin.SkinClass.ControlState.Normal;
             this.readMainFile_btn.DownBack = null;
             this.readMainFile_btn.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.readMainFile_btn.Location = new System.Drawing.Point(193, 275);
+            this.readMainFile_btn.Location = new System.Drawing.Point(126, 256);
             this.readMainFile_btn.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             this.readMainFile_btn.MouseBack = null;
             this.readMainFile_btn.Name = "readMainFile_btn";
             this.readMainFile_btn.NormlBack = null;
-            this.readMainFile_btn.Size = new System.Drawing.Size(264, 98);
+            this.readMainFile_btn.Size = new System.Drawing.Size(202, 66);
             this.readMainFile_btn.TabIndex = 1;
             this.readMainFile_btn.Text = "读总表文件";
             this.readMainFile_btn.UseVisualStyleBackColor = false;
@@ -60,12 +62,12 @@
             this.readSubFile_btn.ControlState = CCWin.SkinClass.ControlState.Normal;
             this.readSubFile_btn.DownBack = null;
             this.readSubFile_btn.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.readSubFile_btn.Location = new System.Drawing.Point(193, 383);
+            this.readSubFile_btn.Location = new System.Drawing.Point(340, 256);
             this.readSubFile_btn.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             this.readSubFile_btn.MouseBack = null;
             this.readSubFile_btn.Name = "readSubFile_btn";
             this.readSubFile_btn.NormlBack = null;
-            this.readSubFile_btn.Size = new System.Drawing.Size(264, 98);
+            this.readSubFile_btn.Size = new System.Drawing.Size(202, 66);
             this.readSubFile_btn.TabIndex = 2;
             this.readSubFile_btn.Text = "读分表文件";
             this.readSubFile_btn.UseVisualStyleBackColor = false;
@@ -81,13 +83,13 @@
             this.start_btn.DownBaseColor = System.Drawing.Color.Red;
             this.start_btn.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.start_btn.ForeColor = System.Drawing.SystemColors.ButtonHighlight;
-            this.start_btn.Location = new System.Drawing.Point(581, 329);
+            this.start_btn.Location = new System.Drawing.Point(126, 332);
             this.start_btn.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             this.start_btn.MouseBack = null;
             this.start_btn.MouseBaseColor = System.Drawing.Color.DarkSalmon;
             this.start_btn.Name = "start_btn";
             this.start_btn.NormlBack = null;
-            this.start_btn.Size = new System.Drawing.Size(264, 98);
+            this.start_btn.Size = new System.Drawing.Size(416, 74);
             this.start_btn.TabIndex = 3;
             this.start_btn.Text = "执行";
             this.start_btn.UseVisualStyleBackColor = false;
@@ -96,7 +98,7 @@
             // mainExcelFile_lbl
             // 
             this.mainExcelFile_lbl.AutoSize = true;
-            this.mainExcelFile_lbl.Location = new System.Drawing.Point(189, 122);
+            this.mainExcelFile_lbl.Location = new System.Drawing.Point(78, 138);
             this.mainExcelFile_lbl.Margin = new System.Windows.Forms.Padding(6, 0, 6, 0);
             this.mainExcelFile_lbl.Name = "mainExcelFile_lbl";
             this.mainExcelFile_lbl.Size = new System.Drawing.Size(115, 21);
@@ -106,7 +108,7 @@
             // subExcelFile_lbl
             // 
             this.subExcelFile_lbl.AutoSize = true;
-            this.subExcelFile_lbl.Location = new System.Drawing.Point(189, 196);
+            this.subExcelFile_lbl.Location = new System.Drawing.Point(78, 195);
             this.subExcelFile_lbl.Margin = new System.Windows.Forms.Padding(6, 0, 6, 0);
             this.subExcelFile_lbl.Name = "subExcelFile_lbl";
             this.subExcelFile_lbl.Size = new System.Drawing.Size(115, 21);
@@ -117,18 +119,39 @@
             // processing_lbl
             // 
             this.processing_lbl.AutoSize = true;
-            this.processing_lbl.Location = new System.Drawing.Point(189, 517);
+            this.processing_lbl.Location = new System.Drawing.Point(78, 459);
             this.processing_lbl.Margin = new System.Windows.Forms.Padding(6, 0, 6, 0);
             this.processing_lbl.Name = "processing_lbl";
             this.processing_lbl.Size = new System.Drawing.Size(115, 21);
             this.processing_lbl.TabIndex = 6;
             this.processing_lbl.Text = "正在处理：";
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(646, 89);
+            this.label1.Margin = new System.Windows.Forms.Padding(6, 0, 6, 0);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(304, 21);
+            this.label1.TabIndex = 8;
+            this.label1.Text = "“统计设置”中的调度车站关系";
+            // 
+            // stationController_rtb
+            // 
+            this.stationController_rtb.Location = new System.Drawing.Point(650, 124);
+            this.stationController_rtb.Name = "stationController_rtb";
+            this.stationController_rtb.ReadOnly = true;
+            this.stationController_rtb.Size = new System.Drawing.Size(300, 388);
+            this.stationController_rtb.TabIndex = 9;
+            this.stationController_rtb.Text = "";
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 21F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1043, 685);
+            this.ClientSize = new System.Drawing.Size(1073, 575);
+            this.Controls.Add(this.stationController_rtb);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.processing_lbl);
             this.Controls.Add(this.subExcelFile_lbl);
             this.Controls.Add(this.mainExcelFile_lbl);
@@ -152,6 +175,8 @@
         private System.Windows.Forms.Label mainExcelFile_lbl;
         private System.Windows.Forms.Label subExcelFile_lbl;
         private System.Windows.Forms.Label processing_lbl;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.RichTextBox stationController_rtb;
     }
 }
 
