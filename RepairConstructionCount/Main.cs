@@ -42,6 +42,8 @@ namespace RepairConstructionCount
         List<ControllersAndDeparts> repairDepart;
         bool hasFilePath = false;
         string procceingProgress = "";
+        string consText = "";
+        string repairText = "";
         //显示进度
         private delegate void SetPos(int ipos, string vinfo);
         Thread fThread;
@@ -76,6 +78,8 @@ namespace RepairConstructionCount
             constructDepart = new List<ControllersAndDeparts>();
             repairDepart = new List<ControllersAndDeparts>();
             stationController_rtb.Clear();
+            constructDepartList_rtb.Clear();
+            repairDeaprtList_rtb.Clear();
         }
 
 
@@ -823,7 +827,7 @@ namespace RepairConstructionCount
             catch (Exception e)
             {
                 fThread.Abort();
-                MessageBox.Show("请关闭所有打开的已选文件，错误内容：" + e.ToString(), "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("运行出现问题，错误内容：" + e.ToString(), "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
         }
@@ -856,7 +860,7 @@ namespace RepairConstructionCount
                                 //特殊
                                 foreach(SpecialCauses_ConsRepair _spcc in _c._specialCauses)
                                 {
-                                    if (_spcc._causesName.Contains("事故影响"))
+                                    if (_spcc._causesName.Contains("事故抢险"))
                                     {
                                         consControllers[count]._causeByAccidentCount += _spcc._causesCount;
                                         consControllers[count]._causeByAccidentTime += _spcc._causesTime;
@@ -909,7 +913,7 @@ namespace RepairConstructionCount
                                 //特殊
                                 foreach (SpecialCauses_ConsRepair _spcc in _r._specialCauses)
                                 {
-                                    if (_spcc._causesName.Contains("事故影响"))
+                                    if (_spcc._causesName.Contains("事故抢险"))
                                     {
                                         repairControllers[count]._causeByAccidentCount += _spcc._causesCount;
                                         repairControllers[count]._causeByAccidentTime += _spcc._causesTime;
@@ -947,9 +951,12 @@ namespace RepairConstructionCount
             }
         }
 
-        //遍历设备单位
+        //遍历设备单位并把他们找到合适的列
         private void searchAllDeparts()
         {
+            //合适的列
+            int columnCount = mainFileTitle[0]._statisticsByDeparts_column;
+
             foreach(Construction _cons in constructions)
             {
                 bool hasSame = false;
@@ -971,10 +978,14 @@ namespace RepairConstructionCount
                     {
                         ControllersAndDeparts _cod = new ControllersAndDeparts();
                         _cod._codName = _cons._departName;
+                        _cod._codColumn = columnCount;
                         constructDepart.Add(_cod);
+                        columnCount++;
                     }
                 }
             }
+
+            columnCount = mainFileTitle[1]._statisticsByDeparts_column;
 
             foreach (RailRepair _r in railRepairs)
             {
@@ -997,7 +1008,9 @@ namespace RepairConstructionCount
                     {
                         ControllersAndDeparts _cod = new ControllersAndDeparts();
                         _cod._codName = _r._departName;
+                        _cod._codColumn = columnCount;
                         repairDepart.Add(_cod);
+                        columnCount++;
                     }
 
                 }
@@ -1029,7 +1042,7 @@ namespace RepairConstructionCount
                         //特殊
                         foreach (SpecialCauses_ConsRepair _spcc in _c._specialCauses)
                                 {
-                                    if (_spcc._causesName.Contains("事故影响"))
+                                    if (_spcc._causesName.Contains("事故抢险"))
                                     {
                                         constructDepart[count]._causeByAccidentCount += _spcc._causesCount;
                                         constructDepart[count]._causeByAccidentTime += _spcc._causesTime;
@@ -1077,7 +1090,7 @@ namespace RepairConstructionCount
                                 //特殊
                                 foreach (SpecialCauses_ConsRepair _spcc in _r._specialCauses)
                                 {
-                                    if (_spcc._causesName.Contains("事故影响"))
+                                    if (_spcc._causesName.Contains("事故抢险"))
                                     {
                                 repairDepart[count]._causeByAccidentCount += _spcc._causesCount;
                                 repairDepart[count]._causeByAccidentTime += _spcc._causesTime;
@@ -1361,6 +1374,7 @@ namespace RepairConstructionCount
                         cell = rowPlanCount_cons.CreateCell(_cod._codColumn);
                     }
                     cell.SetCellValue(_cod._codPlannedCount);
+                    string a = cell.ToString();
                 }
 
                 if (rowPlanTime_cons != null)
@@ -1398,7 +1412,11 @@ namespace RepairConstructionCount
                     ICell cell = rowAccidentCount_cons.GetCell(_cod._codColumn);
                     if (cell == null)
                     {
-                        cell = rowAccidentCount_cons.CreateCell(_cod._codColumn);
+                        rowAccidentCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
                     }
                     cell.SetCellValue(_cod._causeByAccidentCount);
                 }
@@ -1408,27 +1426,63 @@ namespace RepairConstructionCount
                     ICell cell = rowAccidentTime_cons.GetCell(_cod._codColumn);
                     if (cell == null)
                     {
-                        cell = rowAccidentTime_cons.CreateCell(_cod._codColumn);
+                        rowAccidentTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
                     }
                     cell.SetCellValue(_cod._causeByAccidentTime);
                 }
 
                 if (rowNatureCount_cons != null)
                 {
+                    /*
+                    ICell cell = sheetCons.GetRow(10).GetCell(9);
+                    if (cell == null)
+                    {
+                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureCount);
+                    */
                     ICell cell = rowNatureCount_cons.GetCell(_cod._codColumn);
                     if (cell == null)
                     {
-                        cell = rowNatureCount_cons.CreateCell(_cod._codColumn);
+                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
                     }
                     cell.SetCellValue(_cod._causeByNatureCount);
                 }
 
                 if (rowNatureTime_cons != null)
                 {
+                    /*
+                    ICell cell = sheetCons.GetRow(11).GetCell(9);
+                    if (cell == null)
+                    {
+                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureTime);
+                    */
                     ICell cell = rowNatureTime_cons.GetCell(_cod._codColumn);
                     if (cell == null)
                     {
-                        cell = rowNatureTime_cons.CreateCell(_cod._codColumn);
+                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
                     }
                     cell.SetCellValue(_cod._causeByNatureTime);
                 }
@@ -1535,6 +1589,253 @@ namespace RepairConstructionCount
 
             }
 
+            consText = "";
+            int countCons = 1;
+            //设备单位
+            foreach (ControllersAndDeparts _cod in constructDepart)
+            {
+                consText = consText + countCons + "、" + _cod._codName + "\n施工站场：\n" + _cod.extra + "\n\n";
+                countCons++;
+                if (_cod._codColumn == 0)
+                {
+                    continue;
+                }
+                ICell titleCell = sheetCons.GetRow(mainFileTitle[0]._plannedCount_row - 1).GetCell(_cod._codColumn);
+                //把单位名称填上
+                if (titleCell == null)
+                {
+                    sheetCons.CreateRow(mainFileTitle[0]._plannedCount_row - 1).CreateCell(_cod._codColumn).SetCellValue(_cod._codName);
+                }
+                else
+                {
+                    titleCell.SetCellValue(_cod._codName);
+                }
+                //填表
+
+                //1-4行为普通情况
+                if (rowPlanCount_cons != null)
+                {
+                    ICell cell = rowPlanCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPlanCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPlannedCount);
+                    string a = cell.ToString();
+                }
+
+                if (rowPlanTime_cons != null)
+                {
+                    ICell cell = rowPlanTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPlanTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPlannedTime);
+                }
+
+                if (rowPermitCount_cons != null)
+                {
+                    ICell cell = rowPermitCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPermitCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPermitCount);
+                }
+
+                if (rowPermitTime_cons != null)
+                {
+                    ICell cell = rowPermitTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPermitTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPermitTime);
+                }
+
+                if (rowAccidentCount_cons != null)
+                {
+                    ICell cell = rowAccidentCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        rowAccidentCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
+                    }
+                    cell.SetCellValue(_cod._causeByAccidentCount);
+                }
+
+                if (rowAccidentTime_cons != null)
+                {
+                    ICell cell = rowAccidentTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        rowAccidentTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
+                    }
+                    cell.SetCellValue(_cod._causeByAccidentTime);
+                }
+
+                if (rowNatureCount_cons != null)
+                {
+                    /*
+                    ICell cell = sheetCons.GetRow(10).GetCell(9);
+                    if (cell == null)
+                    {
+                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureCount);
+                    */
+                    ICell cell = rowNatureCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureCount);
+                }
+
+                if (rowNatureTime_cons != null)
+                {
+                    /*
+                    ICell cell = sheetCons.GetRow(11).GetCell(9);
+                    if (cell == null)
+                    {
+                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureTime);
+                    */
+                    ICell cell = rowNatureTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    else
+                    {
+                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureTime);
+                }
+
+                if (rowDepartCount_cons != null)
+                {
+                    ICell cell = rowDepartCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowDepartCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByDepartCommandCount);
+                }
+
+                if (rowDepartTime_cons != null)
+                {
+                    ICell cell = rowDepartTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowDepartTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByDepartCommandTime);
+                }
+
+                if (rowMainStreamCount_cons != null)
+                {
+                    ICell cell = rowMainStreamCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowMainStreamCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByMainStreamCommandCount);
+                }
+
+                if (rowMainStreamTime_cons != null)
+                {
+                    ICell cell = rowMainStreamTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowMainStreamTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByMainStreamCommandTime);
+                }
+
+                if (rowStationCount_cons != null)
+                {
+                    ICell cell = rowStationCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowStationCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByStationCount);
+                }
+
+                if (rowStationTime_cons != null)
+                {
+                    ICell cell = rowStationTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowStationTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByStationTime);
+                }
+
+                if (rowWeatherCount_cons != null)
+                {
+                    ICell cell = rowWeatherCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowWeatherCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByWeatherCount);
+                }
+
+                if (rowWeatherTime_cons != null)
+                {
+                    ICell cell = rowWeatherTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowWeatherTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByWeatherTime);
+                }
+
+                if (rowUnitCount_cons != null)
+                {
+                    ICell cell = rowUnitCount_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowUnitCount_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNotAskCount);
+                }
+
+                if (rowUnitTime_cons != null)
+                {
+                    ICell cell = rowUnitTime_cons.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowUnitTime_cons.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNotAskTime);
+                }
+
+            }
+            
             //
 
             ///维修
@@ -1569,6 +1870,206 @@ namespace RepairConstructionCount
 
             foreach (ControllersAndDeparts _cod in repairControllers)
             {
+                //1-4行为普通情况
+                if (rowPlanCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowPlanCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPlanCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPlannedCount);
+                }
+
+                if (rowPlanTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowPlanTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPlanTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPlannedTime);
+                }
+
+                if (rowPermitCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowPermitCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPermitCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPermitCount);
+                }
+
+                if (rowPermitTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowPermitTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowPermitTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._codPermitTime);
+                }
+
+                if (rowAccidentCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowAccidentCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowAccidentCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByAccidentCount);
+                }
+
+                if (rowAccidentTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowAccidentTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowAccidentTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByAccidentTime);
+                }
+
+                if (rowNatureCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowNatureCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowNatureCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureCount);
+                }
+
+                if (rowNatureTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowNatureTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowNatureTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNatureTime);
+                }
+
+                if (rowDepartCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowDepartCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowDepartCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByDepartCommandCount);
+                }
+
+                if (rowDepartTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowDepartTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowDepartTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByDepartCommandTime);
+                }
+
+                if (rowMainStreamCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowMainStreamCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowMainStreamCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByMainStreamCommandCount);
+                }
+
+                if (rowMainStreamTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowMainStreamTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowMainStreamTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByMainStreamCommandTime);
+                }
+
+                if (rowStationCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowStationCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowStationCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByStationCount);
+                }
+
+                if (rowStationTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowStationTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowStationTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByStationTime);
+                }
+
+                if (rowWeatherCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowWeatherCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowWeatherCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByWeatherCount);
+                }
+
+                if (rowWeatherTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowWeatherTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowWeatherTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByWeatherTime);
+                }
+
+                if (rowUnitCount_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowUnitCount_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowUnitCount_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNotAskCount);
+                }
+
+                if (rowUnitTime_repair != null && _cod._codColumn != 0)
+                {
+                    ICell cell = rowUnitTime_repair.GetCell(_cod._codColumn);
+                    if (cell == null)
+                    {
+                        cell = rowUnitTime_repair.CreateCell(_cod._codColumn);
+                    }
+                    cell.SetCellValue(_cod._causeByNotAskTime);
+                }
+            }
+
+            repairText = "";
+            int count = 1;
+            //设备单位
+            foreach (ControllersAndDeparts _cod in repairDepart)
+            {
+
+                //把单位名称填上
+                if(sheetRepair.GetRow(mainFileTitle[1]._plannedCount_row - 1).GetCell(_cod._codColumn) == null)
+                {
+                    sheetRepair.CreateRow(mainFileTitle[1]._plannedCount_row - 1).CreateCell(_cod._codColumn).SetCellValue(_cod._codName);
+                }
+                else
+                {
+                    sheetRepair.GetRow(mainFileTitle[1]._plannedCount_row - 1).GetCell(_cod._codColumn).SetCellValue(_cod._codName);
+                }
+                repairText = repairText + count + "、" + _cod._codName + "\n";
+                count++;
+
                 //1-4行为普通情况
                 if (rowPlanCount_repair != null && _cod._codColumn != 0)
                 {
@@ -1813,6 +2314,14 @@ namespace RepairConstructionCount
                             _counter++;
                         }
                     }
+                    if(constructDepartList_rtb.Text.Length == 0)
+                    {
+                        constructDepartList_rtb.Text = consText;
+                    }
+                    if(repairDeaprtList_rtb.Text.Length == 0)
+                    {
+                        repairDeaprtList_rtb.Text = repairText;
+                    }
                 }
             }
             catch(Exception e)
@@ -1840,9 +2349,15 @@ namespace RepairConstructionCount
                 fThread.Start();
                 Thread readMainFileThread = new Thread(new ThreadStart(readMainFile));
                 readMainFileThread.Start();
-                Thread readSubFilesThread = new Thread(new ThreadStart(readSubFiles));
-                readSubFilesThread.Start();
+                Thread readSubFileThread = new Thread(new ThreadStart(readSubFiles));
+                readSubFileThread.Start();
             }
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+            Info form = new Info();
+            form.Show();
         }
     }
 }

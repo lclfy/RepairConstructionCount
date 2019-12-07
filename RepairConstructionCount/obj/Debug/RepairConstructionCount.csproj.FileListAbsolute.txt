@@ -33,3 +33,4 @@ E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstruct
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csproj.CopyComplete
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.exe
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.pdb
+E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.Info.resources
