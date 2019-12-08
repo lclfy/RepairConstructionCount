@@ -13,6 +13,7 @@ using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Diagnostics;
 
 namespace RepairConstructionCount
 {
@@ -47,6 +48,7 @@ namespace RepairConstructionCount
         //显示进度
         private delegate void SetPos(int ipos, string vinfo);
         Thread fThread;
+        Stopwatch sw = new Stopwatch();
 
         public Main()
         {
@@ -148,6 +150,7 @@ namespace RepairConstructionCount
         //读主图
         private void readMainFile()
         {
+            procceingProgress = "正在读取文件…";
             try
             {
                 if (mainFile == null)
@@ -195,7 +198,6 @@ namespace RepairConstructionCount
             int _statisticController = 0;
             int _statisticsDepart = 0;
             bool hasGotIt = false;
-            procceingProgress = "正在处理：" + mainFile.Split('\\')[mainFile.Split('\\').Count() - 1];
             for (int rowNum = 0; rowNum <= _sheet.LastRowNum; rowNum++)
             {
                 IRow row = _sheet.GetRow(rowNum);
@@ -427,6 +429,7 @@ namespace RepairConstructionCount
         {
             try
             {
+                //procceingProgress = "正在读取文件…";
                 foreach (string _subFile in subFileList)
                 {
                     procceingProgress = "正在读取：" + _subFile.Split('\\')[_subFile.Split('\\').Count() - 1];
@@ -2259,7 +2262,10 @@ namespace RepairConstructionCount
             fileStream.Close();
             workbook.Close();
 
-            procceingProgress = "处理完成";
+            sw.Stop();
+            TimeSpan ts2 = sw.Elapsed;
+            procceingProgress = "处理完成，表格将打开。共耗时" + ts2.TotalSeconds+ "秒。";
+            sw.Reset();
             System.Diagnostics.ProcessStartInfo info = new System.Diagnostics.ProcessStartInfo();
             //info.WorkingDirectory = Application.StartupPath;
             info.FileName = mainFile;
@@ -2344,6 +2350,7 @@ namespace RepairConstructionCount
         {
             if (!fThread.IsAlive)
             {
+                sw.Start();
                 refresh();
                 fThread = new Thread(new ThreadStart(SleepT));
                 fThread.Start();
