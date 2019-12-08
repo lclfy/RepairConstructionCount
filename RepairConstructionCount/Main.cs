@@ -1430,7 +1430,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
+                        rowAccidentTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
                     }
                     cell.SetCellValue(_cod._causeByAccidentTime);
                 }
@@ -1456,7 +1456,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                        rowNatureCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
                     }
                     cell.SetCellValue(_cod._causeByNatureCount);
                 }
@@ -1482,7 +1482,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                        rowNatureTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
                     }
                     cell.SetCellValue(_cod._causeByNatureTime);
                 }
@@ -1677,7 +1677,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
+                        rowAccidentTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
                     }
                     cell.SetCellValue(_cod._causeByAccidentTime);
                 }
@@ -1703,7 +1703,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
+                        rowNatureCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
                     }
                     cell.SetCellValue(_cod._causeByNatureCount);
                 }
@@ -1729,7 +1729,7 @@ namespace RepairConstructionCount
                     }
                     else
                     {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
+                        rowNatureTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
                     }
                     cell.SetCellValue(_cod._causeByNatureTime);
                 }
@@ -1847,26 +1847,26 @@ namespace RepairConstructionCount
             IRow rowPermitCount_repair = sheetRepair.GetRow(_mfRepair._permitCount_row);
             IRow rowPermitTime_repair = sheetRepair.GetRow(_mfRepair._permitTime_row);
 
-            IRow rowAccidentCount_repair = sheetCons.GetRow(accidentCountRow_rep);
-            IRow rowAccidentTime_repair = sheetCons.GetRow(accidentTimeRow_rep);
+            IRow rowAccidentCount_repair = sheetRepair.GetRow(accidentCountRow_rep);
+            IRow rowAccidentTime_repair = sheetRepair.GetRow(accidentTimeRow_rep);
 
-            IRow rowNatureCount_repair = sheetCons.GetRow(natureCountRow_rep);
-            IRow rowNatureTime_repair = sheetCons.GetRow(natureTimeRow_rep);
+            IRow rowNatureCount_repair = sheetRepair.GetRow(natureCountRow_rep);
+            IRow rowNatureTime_repair = sheetRepair.GetRow(natureTimeRow_rep);
 
-            IRow rowDepartCount_repair = sheetCons.GetRow(departComCountRow_rep);
-            IRow rowDepartTime_repair = sheetCons.GetRow(departComTimeRow_rep);
+            IRow rowDepartCount_repair = sheetRepair.GetRow(departComCountRow_rep);
+            IRow rowDepartTime_repair = sheetRepair.GetRow(departComTimeRow_rep);
 
-            IRow rowMainStreamCount_repair = sheetCons.GetRow(mainStreamComCountRow_rep);
-            IRow rowMainStreamTime_repair = sheetCons.GetRow(mainStreamComTimeRow_rep);
+            IRow rowMainStreamCount_repair = sheetRepair.GetRow(mainStreamComCountRow_rep);
+            IRow rowMainStreamTime_repair = sheetRepair.GetRow(mainStreamComTimeRow_rep);
 
-            IRow rowStationCount_repair = sheetCons.GetRow(stationCountRow_rep);
-            IRow rowStationTime_repair = sheetCons.GetRow(stationTimeRow_rep);
+            IRow rowStationCount_repair = sheetRepair.GetRow(stationCountRow_rep);
+            IRow rowStationTime_repair = sheetRepair.GetRow(stationTimeRow_rep);
 
-            IRow rowWeatherCount_repair = sheetCons.GetRow(weatherCountRow_rep);
-            IRow rowWeatherTime_repair = sheetCons.GetRow(weatherTimeRow_rep);
+            IRow rowWeatherCount_repair = sheetRepair.GetRow(weatherCountRow_rep);
+            IRow rowWeatherTime_repair = sheetRepair.GetRow(weatherTimeRow_rep);
 
-            IRow rowUnitCount_repair = sheetCons.GetRow(unitCountRow_rep);
-            IRow rowUnitTime_repair = sheetCons.GetRow(unitTimeRow_rep);
+            IRow rowUnitCount_repair = sheetRepair.GetRow(unitCountRow_rep);
+            IRow rowUnitTime_repair = sheetRepair.GetRow(unitTimeRow_rep);
 
             foreach (ControllersAndDeparts _cod in repairControllers)
             {
