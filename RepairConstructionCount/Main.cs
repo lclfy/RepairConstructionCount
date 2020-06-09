@@ -5,7 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 using CCWin;
 using System.IO;
@@ -28,23 +28,21 @@ namespace RepairConstructionCount
         //各分支文件与调度台关系
         List<string> stationInController;
         //副文件标题
-        //List<SubFileTitle> subFileTitles;
-        //施工
-        List<Construction> constructions;
+        List<SubFileTitle> allSubFileTitles;
         //维修
         List<RailRepair> railRepairs;
-        //调度台(施工)
-        List<ControllersAndDeparts> consControllers;
         //调度台(维修)
         List<ControllersAndDeparts> repairControllers;
-        //单位(施工)
-        List<ControllersAndDeparts> constructDepart;
         //单位(天窗)
         List<ControllersAndDeparts> repairDepart;
         bool hasFilePath = false;
         string procceingProgress = "";
+        //文件中的车站列表，用于纠错
+        List<string> stationsList;
         string consText = "";
         string repairText = "";
+        string s_text = "";
+        int stationCount = 0;
         //显示进度
         private delegate void SetPos(int ipos, string vinfo);
         Thread fThread;
@@ -53,35 +51,34 @@ namespace RepairConstructionCount
         public Main()
         {
             mainFileTitle = new List<MainFileTitles>();
-            //subFileTitles = new List<SubFileTitle>();
+            allSubFileTitles = new List<SubFileTitle>();
             InitializeComponent();
         }
 
         private void Main_Load(object sender, EventArgs e)
         {
             refresh();
+            stationCount = 0;
             fThread = new Thread(new ThreadStart(SleepT));
             stationInController = new List<string>();
-            consControllers = new List<ControllersAndDeparts>();
             repairControllers = new List<ControllersAndDeparts>();
-            constructDepart = new List<ControllersAndDeparts>();
             repairDepart = new List<ControllersAndDeparts>();
+            stationsList = new List<string>();
             start_btn.Enabled = false;
             processing_lbl.Text = procceingProgress;
         }
 
         private void refresh()
         {
-            constructions = new List<Construction>();
+            stationCount = 0;
             railRepairs = new List<RailRepair>();
             stationInController = new List<string>();
-            consControllers = new List<ControllersAndDeparts>();
             repairControllers = new List<ControllersAndDeparts>();
-            constructDepart = new List<ControllersAndDeparts>();
             repairDepart = new List<ControllersAndDeparts>();
+            stationsList = new List<string>();
             stationController_rtb.Clear();
-            constructDepartList_rtb.Clear();
             repairDeaprtList_rtb.Clear();
+            stationsList_rtb.Clear();
         }
 
 
@@ -104,10 +101,6 @@ namespace RepairConstructionCount
                     {
                         mainFile = fileName;
                         //施工和维修分别创建
-                        MainFileTitles constructtionTitle = new MainFileTitles();
-                        constructtionTitle._fileName = fileName;
-                        constructtionTitle._repairOrConstruction = false;
-                        mainFileTitle.Add(constructtionTitle);
                         MainFileTitles repairTitle = new MainFileTitles();
                         repairTitle._fileName = fileName;
                         repairTitle._repairOrConstruction = true;
@@ -121,7 +114,7 @@ namespace RepairConstructionCount
                 openFileDialog1.Multiselect = true;
                 if (openFileDialog1.ShowDialog() == DialogResult.OK)
                 {
-                   // subFileTitles = new List<SubFileTitle>();
+                    allSubFileTitles = new List<SubFileTitle>();
                     subFileList = new List<string>();
                     int fileCount = 0;
                     foreach (string fileName in openFileDialog1.FileNames)
@@ -170,17 +163,12 @@ namespace RepairConstructionCount
                         MessageBox.Show("出现错误，请重新选择文件，错误内容：" + e.ToString(), "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
-                ISheet constructionSheet = workbook.GetSheet("施工天窗");
                 ISheet repairSheet = workbook.GetSheet("高铁天窗");
                 ISheet stationControllerSheet = workbook.GetSheet("统计设置");
-                MainFileTitles consTitle = (MainFileTitles)mainFileTitle[0].Clone();
-                MainFileTitles repairTitle = (MainFileTitles)mainFileTitle[1].Clone();
+                MainFileTitles repairTitle = (MainFileTitles)mainFileTitle[0].Clone();
                 mainFileTitle.Clear();
-                //先找施工的
-                consTitle = findMainTitles(constructionSheet, consTitle);
                 //再找维修的
                 repairTitle = findMainTitles(repairSheet, repairTitle);
-                mainFileTitle.Add(consTitle);
                 mainFileTitle.Add(repairTitle);
                 //再找调度台车站对应关系
                 stationInController = FindStationController(stationControllerSheet, new List<string>());
@@ -407,7 +395,7 @@ namespace RepairConstructionCount
                     }
                 }
                 bool findSame = false;
-                foreach(ControllersAndDeparts _cod in consControllers)
+                foreach(ControllersAndDeparts _cod in repairControllers)
                 {
                     if (_cod._codName.Equals(_tempController._codName))
                     {
@@ -417,7 +405,6 @@ namespace RepairConstructionCount
                 }
                 if (!findSame)
                 {
-                    consControllers.Add((ControllersAndDeparts)_tempController.Clone());
                     repairControllers.Add((ControllersAndDeparts)_tempController.Clone());
                 }
             }
@@ -427,7 +414,7 @@ namespace RepairConstructionCount
         //读副图
         private void readSubFiles()
         {
-            try
+            //try
             {
                 //procceingProgress = "正在读取文件…";
                 foreach (string _subFile in subFileList)
@@ -450,372 +437,148 @@ namespace RepairConstructionCount
                             MessageBox.Show("出现错误，请重新选择文件，错误内容：" + e.ToString(), "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
-                    ISheet constructionSheet = workbook.GetSheet("施工天窗");
-                    ISheet repairSheet = workbook.GetSheet("高铁天窗");
-                    //直接找，先施工天窗
-                    //次数在左，时间在右
+                    List<ISheet> repairSheet = new List<ISheet>();
+                    for(int sheetCount = 0;sheetCount < workbook.NumberOfSheets; sheetCount++)
+                    {
+                        repairSheet.Add(workbook.GetSheetAt(sheetCount));
+                    }
                     string currentStation = "";
-                    int plannedColumn_cons = 0;
-                    int askColumn_cons = 0;
-                    int permitColumn_cons = 0;
-                    int dateColumn_cons = 0;
-                    int departCloumn_cons = 0;
-                    int titleRow_cons = 0;
-
-                    int plannedColumn_repair = 0;
-                    int askColumn_repair = 0;
-                    int permitColumn_repair = 0;
-                    int dateColumn_repair = 0;
-                    int departCloumn_repair = 0;
-                    int titleRow_repair = 0;
-                    //居然有多个“给点”。。取第一个
-                    bool hasGotIt = false;
-                    //施工表头
-                    for (int rowNum = 0; rowNum <= constructionSheet.LastRowNum; rowNum++)
+                    //维修表头重写
+                    List<SubFileTitle> _subFileTitles = new List<SubFileTitle>();
+                    foreach(ISheet _rs in repairSheet)
                     {
-                        IRow row = constructionSheet.GetRow(rowNum);
-                        if (row == null)
-                        {
-                            continue;
-                        }
-
-                        for (int columnNum = 0; columnNum <= row.LastCellNum; columnNum++)
-                        {
-                            if (row.GetCell(columnNum) == null || row.GetCell(columnNum).ToString().Length == 0)
+                        currentStation = "";
+                        int titleRowNum = -1;
+                        int contentRowNum = -1;
+                        int endRowNum = -1;
+                        List<RailRepair> _rrS = new List<RailRepair>();
+                        for(int ij= 0; ij <= _rs.LastRowNum; ij++)
+                        { //找标题行和标题行，内容行，结束行,
+                            IRow row = _rs.GetRow(ij);
+                            if(row != null)
                             {
-                                continue;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("提报车站"))
-                            {
-                                currentStation = row.GetCell(columnNum + 2).ToString();
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("计划"))
-                            {
-                                plannedColumn_cons = columnNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("申请"))
-                            {
-                                askColumn_cons = columnNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("给点") && !hasGotIt)
-                            {
-                                permitColumn_cons = columnNum;
-                                hasGotIt = true;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("日期"))
-                            {
-                                dateColumn_cons = columnNum;
-                                titleRow_cons = rowNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("单位"))
-                            {
-                                departCloumn_cons = columnNum;
-                            }
-
-                        }
-                    }
-                    hasGotIt = false;
-                    //施工内容
-                    for (int rowNum = 0; rowNum <= constructionSheet.LastRowNum; rowNum++)
-                    {
-                        IRow row = constructionSheet.GetRow(rowNum);
-                        //标题行，名称行
-                        if (row == null)
-                        {
-                            continue;
-                        }
-                        IRow titleRow = constructionSheet.GetRow(titleRow_cons);
-                        IRow nameRow = constructionSheet.GetRow(titleRow_cons - 1);
-                        ICell cell = row.GetCell(dateColumn_cons);
-                        if (cell != null && cell.ToString().Length != 0)
-                        {
-                            int date = 0;
-                            int.TryParse(cell.ToString(), out date);
-                            if (date > 0)
-                            {
-                                Construction _cons = new Construction();
-                                _cons._constructionDate = date;
-                                _cons._stationName = currentStation;
-                                cell = row.GetCell(departCloumn_cons);
-                                _cons._departName = cell.ToString();
-
-                                //计划
-                                int temp = 0;
-                                cell = row.GetCell(plannedColumn_cons);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._plannedConstructionCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(plannedColumn_cons + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._plannedConstructionTime = temp;
-                                temp = 0;
-
-                                //申请
-                                cell = row.GetCell(askColumn_cons);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._askConstructionCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(askColumn_cons + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._askConstructionTime = temp;
-                                temp = 0;
-
-                                //给点
-                                cell = row.GetCell(permitColumn_cons);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._permitConstructionCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(permitColumn_cons + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _cons._permitConstructionTime = temp;
-                                temp = 0;
-
-                                //往右继续找,每找到一个之后向上找对应标题行(先找次数，右边一列就是时间)
-                                List<SpecialCauses_ConsRepair> _spccList = new List<SpecialCauses_ConsRepair>();
-                                for (int tempColumnNum = permitColumn_cons + 1; tempColumnNum <= row.LastCellNum; tempColumnNum++)
+                                if(row.GetCell(0) != null)
                                 {
-                                    SpecialCauses_ConsRepair _spcc = new SpecialCauses_ConsRepair();
-                                    if (row.GetCell(tempColumnNum) != null && row.GetCell(tempColumnNum).ToString().Length != 0)
-                                    {//找到了
-                                        if (row.GetCell(tempColumnNum).ToString().Equals("0"))
+                                    if (row.GetCell(0).ToString().Contains("综合天窗日统计表"))
+                                    {//车站名称
+                                        currentStation = row.GetCell(0).ToString().Trim().Replace(" ","").Replace("（","(").Replace("）",")").Replace("线路所)",")").Replace("站)",")").Split('(')[1].Split(')')[0];
+                                        //车站名称加入列表
+                                        bool hasGotIt = false;
+                                        foreach(string _station in stationsList)
                                         {
-                                            continue;
-                                        }
-                                        //往上找标题栏看是什么
-                                        if (titleRow.GetCell(tempColumnNum).ToString().Contains("次数"))
-                                        {//是次数，意味着上面就是名称
-                                            if (nameRow.GetCell(tempColumnNum) != null && nameRow.GetCell(tempColumnNum).ToString().Length != 0)
+                                            if (currentStation.Equals(_station.Trim()))
                                             {
-                                                if (nameRow.GetCell(tempColumnNum).ToString().Contains("小计") || nameRow.GetCell(tempColumnNum).ToString().Contains("基数")
-                                                    || nameRow.GetCell(tempColumnNum).ToString().Contains("给点"))
-                                                {
-                                                    continue;
-                                                }
-                                                _spcc._causesName = nameRow.GetCell(tempColumnNum).ToString();
-                                                int _temp = 0;
-                                                int.TryParse(row.GetCell(tempColumnNum).ToString(), out _temp);
-                                                _spcc._causesCount = _temp;
-                                                if (_temp == 0)
-                                                {
-                                                    continue;
-                                                }
-                                                _temp = 0;
-                                                //时间在右边一格
-                                                int.TryParse(row.GetCell(tempColumnNum + 1).ToString(), out _temp);
-                                                _spcc._causesTime = _temp;
-                                                _temp = 0;
-                                                //根据名称判断是不是列入考核
-                                                if (_spcc._causesName.Contains("事故抢险") || _spcc._causesName.Contains("自然灾害"))
-                                                {
-                                                    _spcc._examine = false;
-                                                }
-                                                else if (_spcc._causesName.Contains("部令取消") || _spcc._causesName.Contains("局令取消") ||
-                                                    _spcc._causesName.Contains("天气影响") || _spcc._causesName.Contains("车站未给") ||
-                                                    _spcc._causesName.Contains("单位未要"))
-                                                {
-                                                    _spcc._examine = true;
-
-                                                }
-                                                //添加进去
-                                                _spccList.Add(_spcc);
+                                                hasGotIt = true;
+                                                continue;
                                             }
                                         }
+                                        if(hasGotIt == false)
+                                        {
+                                            stationsList.Add(currentStation);
+                                            stationCount++;
+                                            s_text = s_text + currentStation + "\n";
+                                        }
                                     }
-                                }
-                                _cons._specialCauses = _spccList;
-                                constructions.Add(_cons);
-                            }
-                        }
-                    }
-                    //然后是维修表头
-                    for (int rowNum = 0; rowNum <= repairSheet.LastRowNum; rowNum++)
-                    {
-                        IRow row = repairSheet.GetRow(rowNum);
-                        if (row == null)
-                        {
-                            continue;
-                        }
-                        for (int columnNum = 0; columnNum <= row.LastCellNum; columnNum++)
-                        {
-                            if (row.GetCell(columnNum) == null || row.GetCell(columnNum).ToString().Length == 0)
-                            {
-                                continue;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("提报车站"))
-                            {
-                                currentStation = row.GetCell(columnNum + 2).ToString();
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("计划"))
-                            {
-                                plannedColumn_repair = columnNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("申请"))
-                            {
-                                askColumn_repair = columnNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("给点") && !hasGotIt)
-                            {
-                                permitColumn_repair = columnNum;
-                                hasGotIt = true;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("日期"))
-                            {
-                                dateColumn_repair = columnNum;
-                                titleRow_repair = rowNum;
-                            }
-                            if (row.GetCell(columnNum).ToString().Contains("单位"))
-                            {
-                                departCloumn_repair = columnNum;
-                            }
-                        }
-                    }
-                    //维修内容
-                    int lastDateRow = titleRow_repair + 1;
-                    for (int rowNum = titleRow_repair + 1; rowNum <= repairSheet.LastRowNum; rowNum++)
-                    {
-                        //从标题行下面一行开始找
-                        IRow row = repairSheet.GetRow(rowNum);
-                        //标题行，名称行
-                        if (row == null)
-                        {
-                            continue;
-                        }
-                        IRow titleRow = repairSheet.GetRow(titleRow_repair);
-                        IRow nameRow = repairSheet.GetRow(titleRow_repair - 1);
-                        //从单位栏开始找，找左上角日期(不是日期的跳过)
-                        ICell cell = row.GetCell(dateColumn_repair + 1);
-                        if (cell != null && cell.ToString().Length != 0)
-                        {
-                            int date = 0;
-                            for (int tempRowNum = rowNum; tempRowNum >= lastDateRow; tempRowNum--)
-                            {//往上找
-                                IRow _dateRow = repairSheet.GetRow(tempRowNum);
-
-                                if (_dateRow.GetCell(dateColumn_repair) == null && _dateRow.GetCell(dateColumn_repair).ToString().Length == 0)
-                                {
-                                    continue;
-                                }
-                                else
-                                {
-                                    if (!Regex.IsMatch(_dateRow.GetCell(dateColumn_repair).ToString(), "^[0-9]*$"))
-                                    {//日期不是数字，跳过
-                                        string a = _dateRow.GetCell(dateColumn_repair).ToString();
-                                        break;
+                                    if (row.GetCell(0).ToString().Contains("日期星期"))
+                                    {//标题
+                                        titleRowNum = ij;
                                     }
-                                    int.TryParse(_dateRow.GetCell(dateColumn_repair).ToString(), out date);
-                                    if (date != 0)
+                                    if (row.GetCell(0).ToString().Contains("周计"))
+                                    {//结束
+                                        endRowNum = ij;
+                                    }
+                                    if (row.GetCell(1).ToString().Contains("计划次数"))
                                     {
-                                        lastDateRow = tempRowNum;
+                                        contentRowNum = ij;
                                     }
                                 }
                             }
-                            if (date > 0)
+                            else
                             {
-                                //需要一直往下找直到下一个Date出现
-                                RailRepair _repair = new RailRepair();
-                                _repair._repairDate = date;
-                                _repair._stationName = currentStation;
-                                cell = row.GetCell(departCloumn_repair);
-                                _repair._departName = cell.ToString();
-
-                                //计划
-                                int temp = 0;
-                                cell = row.GetCell(plannedColumn_repair);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._plannedRepairCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(plannedColumn_repair + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._plannedRepairTime = temp;
-                                temp = 0;
-
-                                //申请
-                                cell = row.GetCell(askColumn_repair);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._askRepairCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(askColumn_repair + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._askRepairTime = temp;
-                                temp = 0;
-
-                                //给点
-                                cell = row.GetCell(permitColumn_repair);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._permitRepairCount = temp;
-                                temp = 0;
-
-                                cell = row.GetCell(permitColumn_repair + 1);
-                                int.TryParse(cell.ToString(), out temp);
-                                _repair._permitRepairTime = temp;
-                                temp = 0;
-
-                                //往右继续找,每找到一个之后向上找对应标题行(先找次数，右边一列就是时间)
-                                List<SpecialCauses_ConsRepair> _spccList = new List<SpecialCauses_ConsRepair>();
-                                for (int tempColumnNum = permitColumn_repair + 1; tempColumnNum <= row.LastCellNum; tempColumnNum++)
+                                continue;
+                            }
+                        }
+                        if(titleRowNum != -1 && endRowNum != -1)
+                        {
+                            {
+                                IRow row = _rs.GetRow(titleRowNum);
+                                //开始找设备单位名称和他们的计划/给点时间
+                                for (int columns = 1; columns <= row.LastCellNum; columns++)
                                 {
-                                    SpecialCauses_ConsRepair _spcc = new SpecialCauses_ConsRepair();
-                                    if (row.GetCell(tempColumnNum) != null && row.GetCell(tempColumnNum).ToString().Length != 0)
-                                    {//找到了
-                                        if (row.GetCell(tempColumnNum).ToString().Equals("0"))
+                                    if (row.GetCell(columns) != null && row.GetCell(columns).ToString().Length != 0 && !row.GetCell(columns).ToString().Trim().Equals("") && !row.GetCell(columns).ToString().Trim().Contains("车站值班员"))
+                                    {//找到了一个设备单位
+                                        string tempDepartName = row.GetCell(columns).ToString().Trim();
+                                        int planCountColumn = columns;
+                                        int planTimeColumn = columns + 1;
+                                        int askCountColumn = columns+2;
+                                        int askTimeColumn = columns +3;
+                                        int permitCountColumn = columns +4;
+                                        int permitTimeColumn = columns +5;
+                                        //往下找次数与时间
+                                        for (int im = contentRowNum +1; im < endRowNum; im++)
                                         {
-                                            continue;
-                                        }
-                                        //往上找标题栏看是什么
-                                        if (titleRow.GetCell(tempColumnNum).ToString().Contains("次数"))
-                                        {//是次数，意味着上面就是名称
-                                            if (nameRow.GetCell(tempColumnNum) != null && nameRow.GetCell(tempColumnNum).ToString().Length != 0)
+                                            RailRepair _tempRR = new RailRepair();
+                                            _tempRR._stationName = currentStation;
+                                            _tempRR._departName = tempDepartName;
+                                            IRow _contentRow = _rs.GetRow(im);
+                                            if (row.GetCell(planCountColumn) != null)
                                             {
-                                                if (nameRow.GetCell(tempColumnNum).ToString().Contains("小计") || nameRow.GetCell(tempColumnNum).ToString().Contains("基数")
-                                                    || nameRow.GetCell(tempColumnNum).ToString().Contains("给点"))
-                                                {
-                                                    continue;
-                                                }
-                                                _spcc._causesName = nameRow.GetCell(tempColumnNum).ToString();
-                                                int _temp = 0;
-                                                int.TryParse(row.GetCell(tempColumnNum).ToString(), out _temp);
-                                                _spcc._causesCount = _temp;
-                                                if (_temp == 0)
-                                                {
-                                                    continue;
-                                                }
-                                                _temp = 0;
-                                                //时间在右边一格
-                                                int.TryParse(row.GetCell(tempColumnNum + 1).ToString(), out _temp);
-                                                _spcc._causesTime = _temp;
-                                                _temp = 0;
-                                                //根据名称判断是不是列入考核
-                                                if (_spcc._causesName.Contains("事故抢险") || _spcc._causesName.Contains("自然灾害"))
-                                                {
-                                                    _spcc._examine = false;
-                                                }
-                                                else if (_spcc._causesName.Contains("部令取消") || _spcc._causesName.Contains("局令取消") ||
-                                                    _spcc._causesName.Contains("天气影响") || _spcc._causesName.Contains("车站未给") ||
-                                                    _spcc._causesName.Contains("单位未要"))
-                                                {
-                                                    _spcc._examine = true;
-
-                                                }
-                                                //添加进去
-                                                _spccList.Add(_spcc);
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(planCountColumn).ToString().Trim(), out _temp);
+                                                _tempRR._plannedRepairCount = _temp;
                                             }
+                                            if (row.GetCell(planTimeColumn) != null)
+                                            {
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(planTimeColumn).ToString().Trim(), out _temp);
+                                                _tempRR._plannedRepairTime = _temp;
+                                            }
+                                            if (row.GetCell(askCountColumn) != null)
+                                            {
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(askCountColumn).ToString().Trim(), out _temp);
+                                                _tempRR._askRepairCount = _temp;
+                                            }
+                                            if (row.GetCell(askTimeColumn) != null)
+                                            {
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(askTimeColumn).ToString().Trim(), out _temp);
+                                                _tempRR._askRepairTime = _temp;
+                                            }
+                                            if (row.GetCell(permitCountColumn) != null)
+                                            {
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(permitCountColumn).ToString().Trim(), out _temp);
+                                                _tempRR._permitRepairCount = _temp;
+                                            }
+                                            if (row.GetCell(permitTimeColumn) != null)
+                                            {
+                                                int _temp = -1;
+                                                int.TryParse(_contentRow.GetCell(permitTimeColumn).ToString().Trim(), out _temp);
+                                                _tempRR._permitRepairTime = _temp;
+                                            }
+                                            railRepairs.Add(_tempRR);
                                         }
                                     }
                                 }
-                                _repair._specialCauses = _spccList;
-                                if (_repair._repairDate > 0)
-                                {//防止混入小计
-                                    railRepairs.Add(_repair);
-                                }
                             }
+                        }
+                        else
+                        {
+                            MessageBox.Show("选定的文件格式出错:第一列无_日期星期_或_周计\n" + _subFile);
                         }
                     }
                     fileStream.Close();
+                    //添加
+                    foreach(SubFileTitle _sft in _subFileTitles)
+                    {
+                        SubFileTitle _tempSFT = new SubFileTitle();
+                        _tempSFT._fileName = _sft._fileName;
+                        _tempSFT._subDeparts = _sft._subDeparts;
+                        _tempSFT._subStationName = _sft._subStationName;
+                        _tempSFT._specialCauses_title = _sft._specialCauses_title;
+                        allSubFileTitles.Add(_tempSFT);
+                    }
                 }
                 //匹配调度台
                 matchControllersWithStations();
@@ -827,11 +590,13 @@ namespace RepairConstructionCount
                 FillTheForm();
                 fThread.Abort();
             }
+            /*
             catch (Exception e)
             {
                 fThread.Abort();
                 MessageBox.Show("运行出现问题，错误内容：" + e.ToString(), "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+            */
 
         }
 
@@ -840,65 +605,6 @@ namespace RepairConstructionCount
         private void matchControllersWithStations()
         {
             procceingProgress = "正在处理…";
-            for (int count = 0; count<consControllers.Count;count++)
-                {
-                foreach (string _stationControllers in stationInController)
-                {
-                    //如果调度台和字符匹配到
-                    if (_stationControllers.Contains(consControllers[count]._codName))
-                    {
-                        //挨个匹配对象加入进去
-                        foreach (Construction _c in constructions)
-                        {
-                            if (_c._stationName.Trim().Equals(_stationControllers.Split('_')[0].Trim()))
-                            {//匹配到
-                                if(_c._plannedConstructionCount != 0)
-                                {
-                                    int aa = 0;
-                                }
-                                consControllers[count]._codPlannedCount += _c._plannedConstructionCount;
-                                consControllers[count]._codPlannedTime += _c._plannedConstructionTime;
-                                consControllers[count]._codPermitCount += _c._permitConstructionCount;
-                                consControllers[count]._codPermitTime += _c._permitConstructionTime;
-                                //特殊
-                                foreach(SpecialCauses_ConsRepair _spcc in _c._specialCauses)
-                                {
-                                    if (_spcc._causesName.Contains("事故抢险"))
-                                    {
-                                        consControllers[count]._causeByAccidentCount += _spcc._causesCount;
-                                        consControllers[count]._causeByAccidentTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("自然灾害"))
-                                    {
-                                        consControllers[count]._causeByNatureCount += _spcc._causesCount;
-                                        consControllers[count]._causeByNatureTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("部令取消"))
-                                    {
-                                        consControllers[count]._causeByDepartCommandCount += _spcc._causesCount;
-                                        consControllers[count]._causeByDepartCommandTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("局令取消"))
-                                    {
-                                        consControllers[count]._causeByMainStreamCommandCount += _spcc._causesCount;
-                                        consControllers[count]._causeByMainStreamCommandTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("单位未要"))
-                                    {
-                                        consControllers[count]._causeByNotAskCount += _spcc._causesCount;
-                                        consControllers[count]._causeByNotAskTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("天气影响"))
-                                    {
-                                        consControllers[count]._causeByWeatherCount += _spcc._causesCount;
-                                        consControllers[count]._causeByWeatherTime += _spcc._causesTime;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             for (int count = 0; count < repairControllers.Count; count++)
             {
                 foreach (string _stationControllers in stationInController)
@@ -958,37 +664,11 @@ namespace RepairConstructionCount
         private void searchAllDeparts()
         {
             //合适的列
-            int columnCount = mainFileTitle[0]._statisticsByDeparts_column;
-
-            foreach(Construction _cons in constructions)
+            if(mainFileTitle.Count == 0)
             {
-                bool hasSame = false;
-                foreach(ControllersAndDeparts _tempCod in constructDepart)
-                {
-                    if (_tempCod._codName.Equals(_cons._departName))
-                    {
-                        hasSame = true;
-                        break;
-                    }
-                }
-                if (hasSame)
-                {
-                    continue;
-                }
-                else
-                {
-                    if(_cons._departName.Length != 0)
-                    {
-                        ControllersAndDeparts _cod = new ControllersAndDeparts();
-                        _cod._codName = _cons._departName;
-                        _cod._codColumn = columnCount;
-                        constructDepart.Add(_cod);
-                        columnCount++;
-                    }
-                }
+                return;
             }
-
-            columnCount = mainFileTitle[1]._statisticsByDeparts_column;
+            int columnCount = mainFileTitle[0]._statisticsByDeparts_column;
 
             foreach (RailRepair _r in railRepairs)
             {
@@ -1023,62 +703,6 @@ namespace RepairConstructionCount
         //匹配设备单位
         private void matchDepartsWithStations()
         {
-            for (int count = 0; count < constructDepart.Count; count++)
-            {
-                        foreach (Construction _c in constructions)
-                        {
-                            if (_c._departName.Trim().Equals(constructDepart[count]._codName.Trim()))
-                            {//匹配到
-                                if (_c._plannedConstructionCount != 0)
-                                {
-                                    int aa = 0;
-                                }
-                                constructDepart[count]._codPlannedCount += _c._plannedConstructionCount;
-                                constructDepart[count]._codPlannedTime += _c._plannedConstructionTime;
-                                constructDepart[count]._codPermitCount += _c._permitConstructionCount;
-                                constructDepart[count]._codPermitTime += _c._permitConstructionTime;
-                        if (!constructDepart[count].extra.Contains(_c._stationName))
-                        {
-                            constructDepart[count].extra += _c._stationName + " ";
-                        }
-
-                        //特殊
-                        foreach (SpecialCauses_ConsRepair _spcc in _c._specialCauses)
-                                {
-                                    if (_spcc._causesName.Contains("事故抢险"))
-                                    {
-                                        constructDepart[count]._causeByAccidentCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByAccidentTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("自然灾害"))
-                                    {
-                                        constructDepart[count]._causeByNatureCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByNatureTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("部令取消"))
-                                    {
-                                        constructDepart[count]._causeByDepartCommandCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByDepartCommandTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("局令取消"))
-                                    {
-                                        constructDepart[count]._causeByMainStreamCommandCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByMainStreamCommandTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("单位未要"))
-                                    {
-                                        constructDepart[count]._causeByNotAskCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByNotAskTime += _spcc._causesTime;
-                                    }
-                                    if (_spcc._causesName.Contains("天气影响"))
-                                    {
-                                        constructDepart[count]._causeByWeatherCount += _spcc._causesCount;
-                                        constructDepart[count]._causeByWeatherTime += _spcc._causesTime;
-                                    }
-                                }
-                            }
-                }
-            }
             for (int count = 0; count < repairDepart.Count; count++)
             {
                         foreach (RailRepair _r in railRepairs)
@@ -1162,90 +786,7 @@ namespace RepairConstructionCount
             normalFont.IsBold = true;
             normalStyle.SetFont(normalFont);
 
-            //特殊行，先找施工后找维修
-            int accidentCountRow_cons = 0;
-            int accidentTimeRow_cons = 0;
-
-            int natureCountRow_cons = 0;
-            int natureTimeRow_cons = 0;
-
-            int departComCountRow_cons = 0;
-            int departComTimeRow_cons = 0;
-
-            int mainStreamComCountRow_cons = 0;
-            int mainStreamComTimeRow_cons = 0;
-
-            int stationCountRow_cons = 0;
-            int stationTimeRow_cons = 0;
-
-            int weatherCountRow_cons = 0;
-            int weatherTimeRow_cons = 0;
-
-            int unitCountRow_cons = 0;
-            int unitTimeRow_cons = 0;
-            try
-            {
-                accidentCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseCount_rowOrColumn;
-                accidentTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseTime_rowOrColumn;
-            }
-            catch(Exception e)
-            {
-
-            }
-            try
-            {
-                natureCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseCount_rowOrColumn;
-                natureTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseTime_rowOrColumn;
-            }
-            catch(Exception e)
-            {
-
-            }
-            try
-            {
-                departComCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseCount_rowOrColumn;
-                departComTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseTime_rowOrColumn;
-            }
-            catch (Exception e)
-            {
-
-            }
-            try
-            {
-                mainStreamComCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseCount_rowOrColumn;
-                mainStreamComTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseTime_rowOrColumn;
-            }
-            catch (Exception e)
-            {
-
-            }
-            try
-            {
-                stationCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("车站取消"))._specialCauseCount_rowOrColumn;
-                stationTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("车站取消"))._specialCauseTime_rowOrColumn;
-            }
-            catch (Exception e)
-            {
-
-            }
-            try
-            {
-                weatherCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseCount_rowOrColumn;
-                weatherTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseTime_rowOrColumn;
-            }
-            catch (Exception e)
-            {
-
-            }
-            try
-            {
-                unitCountRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseCount_rowOrColumn;
-                unitTimeRow_cons = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseTime_rowOrColumn;
-            }
-            catch (Exception e)
-            {
-
-            }
+        
 
             //维修
             int accidentCountRow_rep = 0;
@@ -1270,8 +811,8 @@ namespace RepairConstructionCount
             int unitTimeRow_rep = 0;
             try
             {
-                accidentCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseCount_rowOrColumn;
-                accidentTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseTime_rowOrColumn;
+                accidentCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseCount_rowOrColumn;
+                accidentTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("事故影响"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
@@ -1279,8 +820,8 @@ namespace RepairConstructionCount
             }
             try
             {
-                natureCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseCount_rowOrColumn;
-                natureTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseTime_rowOrColumn;
+                natureCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseCount_rowOrColumn;
+                natureTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("自然灾害"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
@@ -1288,8 +829,8 @@ namespace RepairConstructionCount
             }
             try
             {
-                departComCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseCount_rowOrColumn;
-                departComTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseTime_rowOrColumn;
+                departComCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseCount_rowOrColumn;
+                departComTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("部令取消"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
@@ -1297,8 +838,8 @@ namespace RepairConstructionCount
             }
             try
             {
-                mainStreamComCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseCount_rowOrColumn;
-                mainStreamComTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseTime_rowOrColumn;
+                mainStreamComCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseCount_rowOrColumn;
+                mainStreamComTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("局令取消"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
@@ -1306,7 +847,7 @@ namespace RepairConstructionCount
             }
             try
             {
-                stationCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("车站取消"))._specialCauseCount_rowOrColumn;
+                stationCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("车站取消"))._specialCauseCount_rowOrColumn;
                 stationTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("车站取消"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
@@ -1315,8 +856,8 @@ namespace RepairConstructionCount
             }
             try
             {
-                weatherCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseCount_rowOrColumn;
-                weatherTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseTime_rowOrColumn;
+                weatherCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseCount_rowOrColumn;
+                weatherTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("天气影响"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
@@ -1324,525 +865,16 @@ namespace RepairConstructionCount
             }
             try
             {
-                unitCountRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseCount_rowOrColumn;
-                unitTimeRow_rep = mainFileTitle[1]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseTime_rowOrColumn;
+                unitCountRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseCount_rowOrColumn;
+                unitTimeRow_rep = mainFileTitle[0]._specialCauses_title.Find(target => target._specialCauseName.Trim().Equals("单位未要"))._specialCauseTime_rowOrColumn;
             }
             catch (Exception e)
             {
 
             }
 
-            MainFileTitles _mfCons = mainFileTitle[0];
-            ISheet sheetCons = workbook.GetSheet("施工天窗");
-            //先填调度台的
-            IRow rowPlanCount_cons = sheetCons.GetRow(_mfCons._plannedCount_row);
-            IRow rowPlanTime_cons = sheetCons.GetRow(_mfCons._plannedTime_row);
-
-            IRow rowPermitCount_cons = sheetCons.GetRow(_mfCons._permitCount_row);
-            IRow rowPermitTime_cons = sheetCons.GetRow(_mfCons._permitTime_row);
-
-            IRow rowAccidentCount_cons = sheetCons.GetRow(accidentCountRow_cons);
-            IRow rowAccidentTime_cons = sheetCons.GetRow(accidentTimeRow_cons);
-
-            IRow rowNatureCount_cons = sheetCons.GetRow(natureCountRow_cons);
-            IRow rowNatureTime_cons = sheetCons.GetRow(natureTimeRow_cons);
-
-            IRow rowDepartCount_cons = sheetCons.GetRow(departComCountRow_cons);
-            IRow rowDepartTime_cons = sheetCons.GetRow(departComTimeRow_cons);
-
-            IRow rowMainStreamCount_cons = sheetCons.GetRow(mainStreamComCountRow_cons);
-            IRow rowMainStreamTime_cons = sheetCons.GetRow(mainStreamComTimeRow_cons);
-
-            IRow rowStationCount_cons = sheetCons.GetRow(stationCountRow_cons);
-            IRow rowStationTime_cons = sheetCons.GetRow(stationTimeRow_cons);
-
-            IRow rowWeatherCount_cons = sheetCons.GetRow(weatherCountRow_cons);
-            IRow rowWeatherTime_cons = sheetCons.GetRow(weatherTimeRow_cons);
-
-            IRow rowUnitCount_cons = sheetCons.GetRow(unitCountRow_cons);
-            IRow rowUnitTime_cons = sheetCons.GetRow(unitTimeRow_cons);
-
-            foreach (ControllersAndDeparts _cod in consControllers)
-            {
-                if(_cod._codColumn == 0)
-                {
-                    continue;
-                }
-                //1-4行为普通情况
-                if (rowPlanCount_cons != null)
-                {
-                    ICell cell = rowPlanCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPlanCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPlannedCount);
-                    string a = cell.ToString();
-                }
-
-                if (rowPlanTime_cons != null)
-                {
-                    ICell cell = rowPlanTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPlanTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPlannedTime);
-                }
-
-                if (rowPermitCount_cons != null)
-                {
-                    ICell cell = rowPermitCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPermitCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPermitCount);
-                }
-
-                if (rowPermitTime_cons != null)
-                {
-                    ICell cell = rowPermitTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPermitTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPermitTime);
-                }
-
-                if(rowAccidentCount_cons != null)
-                {
-                    ICell cell = rowAccidentCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowAccidentCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
-                    }
-                    cell.SetCellValue(_cod._causeByAccidentCount);
-                }
-
-                if (rowAccidentTime_cons != null)
-                {
-                    ICell cell = rowAccidentTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowAccidentTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
-                    }
-                    else
-                    {
-                        rowAccidentTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
-                    }
-                    cell.SetCellValue(_cod._causeByAccidentTime);
-                }
-
-                if (rowNatureCount_cons != null)
-                {
-                    /*
-                    ICell cell = sheetCons.GetRow(10).GetCell(9);
-                    if (cell == null)
-                    {
-                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureCount);
-                    */
-                    ICell cell = rowNatureCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    else
-                    {
-                        rowNatureCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureCount);
-                }
-
-                if (rowNatureTime_cons != null)
-                {
-                    /*
-                    ICell cell = sheetCons.GetRow(11).GetCell(9);
-                    if (cell == null)
-                    {
-                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureTime);
-                    */
-                    ICell cell = rowNatureTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    else
-                    {
-                        rowNatureTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureTime);
-                }
-
-                if (rowDepartCount_cons != null)
-                {
-                    ICell cell = rowDepartCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowDepartCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByDepartCommandCount);
-                }
-
-                if (rowDepartTime_cons != null)
-                {
-                    ICell cell = rowDepartTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowDepartTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByDepartCommandTime);
-                }
-
-                if (rowMainStreamCount_cons != null)
-                {
-                    ICell cell = rowMainStreamCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowMainStreamCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByMainStreamCommandCount);
-                }
-
-                if (rowMainStreamTime_cons != null)
-                {
-                    ICell cell = rowMainStreamTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowMainStreamTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByMainStreamCommandTime);
-                }
-
-                if (rowStationCount_cons != null)
-                {
-                    ICell cell = rowStationCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowStationCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByStationCount);
-                }
-
-                if (rowStationTime_cons != null)
-                {
-                    ICell cell = rowStationTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowStationTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByStationTime);
-                }
-
-                if (rowWeatherCount_cons != null)
-                {
-                    ICell cell = rowWeatherCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowWeatherCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByWeatherCount);
-                }
-
-                if (rowWeatherTime_cons != null)
-                {
-                    ICell cell = rowWeatherTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowWeatherTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByWeatherTime);
-                }
-
-                if (rowUnitCount_cons != null)
-                {
-                    ICell cell = rowUnitCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowUnitCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByNotAskCount);
-                }
-
-                if (rowUnitTime_cons != null)
-                {
-                    ICell cell = rowUnitTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowUnitTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByNotAskTime);
-                }
-
-            }
-
-            consText = "";
-            int countCons = 1;
-            //设备单位
-            foreach (ControllersAndDeparts _cod in constructDepart)
-            {
-                consText = consText + countCons + "、" + _cod._codName + "\n施工站场：\n" + _cod.extra + "\n\n";
-                countCons++;
-                if (_cod._codColumn == 0)
-                {
-                    continue;
-                }
-                ICell titleCell = sheetCons.GetRow(mainFileTitle[0]._plannedCount_row - 1).GetCell(_cod._codColumn);
-                //把单位名称填上
-                if (titleCell == null)
-                {
-                    sheetCons.CreateRow(mainFileTitle[0]._plannedCount_row - 1).CreateCell(_cod._codColumn).SetCellValue(_cod._codName);
-                }
-                else
-                {
-                    titleCell.SetCellValue(_cod._codName);
-                }
-                //填表
-
-                //1-4行为普通情况
-                if (rowPlanCount_cons != null)
-                {
-                    ICell cell = rowPlanCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPlanCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPlannedCount);
-                    string a = cell.ToString();
-                }
-
-                if (rowPlanTime_cons != null)
-                {
-                    ICell cell = rowPlanTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPlanTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPlannedTime);
-                }
-
-                if (rowPermitCount_cons != null)
-                {
-                    ICell cell = rowPermitCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPermitCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPermitCount);
-                }
-
-                if (rowPermitTime_cons != null)
-                {
-                    ICell cell = rowPermitTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowPermitTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._codPermitTime);
-                }
-
-                if (rowAccidentCount_cons != null)
-                {
-                    ICell cell = rowAccidentCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowAccidentCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentCount);
-                    }
-                    cell.SetCellValue(_cod._causeByAccidentCount);
-                }
-
-                if (rowAccidentTime_cons != null)
-                {
-                    ICell cell = rowAccidentTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowAccidentTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
-                    }
-                    else
-                    {
-                        rowAccidentTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByAccidentTime);
-                    }
-                    cell.SetCellValue(_cod._causeByAccidentTime);
-                }
-
-                if (rowNatureCount_cons != null)
-                {
-                    /*
-                    ICell cell = sheetCons.GetRow(10).GetCell(9);
-                    if (cell == null)
-                    {
-                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureCount);
-                    */
-                    ICell cell = rowNatureCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowNatureCount_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    else
-                    {
-                        rowNatureCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureCount);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureCount);
-                }
-
-                if (rowNatureTime_cons != null)
-                {
-                    /*
-                    ICell cell = sheetCons.GetRow(11).GetCell(9);
-                    if (cell == null)
-                    {
-                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    else
-                    {
-                        rowAccidentCount_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureTime);
-                    */
-                    ICell cell = rowNatureTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        rowNatureTime_cons.CreateCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    else
-                    {
-                        rowNatureTime_cons.GetCell(_cod._codColumn).SetCellValue(_cod._causeByNatureTime);
-                    }
-                    cell.SetCellValue(_cod._causeByNatureTime);
-                }
-
-                if (rowDepartCount_cons != null)
-                {
-                    ICell cell = rowDepartCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowDepartCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByDepartCommandCount);
-                }
-
-                if (rowDepartTime_cons != null)
-                {
-                    ICell cell = rowDepartTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowDepartTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByDepartCommandTime);
-                }
-
-                if (rowMainStreamCount_cons != null)
-                {
-                    ICell cell = rowMainStreamCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowMainStreamCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByMainStreamCommandCount);
-                }
-
-                if (rowMainStreamTime_cons != null)
-                {
-                    ICell cell = rowMainStreamTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowMainStreamTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByMainStreamCommandTime);
-                }
-
-                if (rowStationCount_cons != null)
-                {
-                    ICell cell = rowStationCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowStationCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByStationCount);
-                }
-
-                if (rowStationTime_cons != null)
-                {
-                    ICell cell = rowStationTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowStationTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByStationTime);
-                }
-
-                if (rowWeatherCount_cons != null)
-                {
-                    ICell cell = rowWeatherCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowWeatherCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByWeatherCount);
-                }
-
-                if (rowWeatherTime_cons != null)
-                {
-                    ICell cell = rowWeatherTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowWeatherTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByWeatherTime);
-                }
-
-                if (rowUnitCount_cons != null)
-                {
-                    ICell cell = rowUnitCount_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowUnitCount_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByNotAskCount);
-                }
-
-                if (rowUnitTime_cons != null)
-                {
-                    ICell cell = rowUnitTime_cons.GetCell(_cod._codColumn);
-                    if (cell == null)
-                    {
-                        cell = rowUnitTime_cons.CreateCell(_cod._codColumn);
-                    }
-                    cell.SetCellValue(_cod._causeByNotAskTime);
-                }
-
-            }
-            
-            //
-
             ///维修
-            MainFileTitles _mfRepair = mainFileTitle[1];
+            MainFileTitles _mfRepair = mainFileTitle[0];
             ISheet sheetRepair = workbook.GetSheet("高铁天窗");
             IRow rowPlanCount_repair = sheetRepair.GetRow(_mfRepair._plannedCount_row);
             IRow rowPlanTime_repair = sheetRepair.GetRow(_mfRepair._plannedTime_row);
@@ -2062,13 +1094,13 @@ namespace RepairConstructionCount
             {
 
                 //把单位名称填上
-                if(sheetRepair.GetRow(mainFileTitle[1]._plannedCount_row - 1).GetCell(_cod._codColumn) == null)
+                if(sheetRepair.GetRow(mainFileTitle[0]._plannedCount_row - 1).GetCell(_cod._codColumn) == null)
                 {
-                    sheetRepair.CreateRow(mainFileTitle[1]._plannedCount_row - 1).CreateCell(_cod._codColumn).SetCellValue(_cod._codName);
+                    sheetRepair.CreateRow(mainFileTitle[0]._plannedCount_row - 1).CreateCell(_cod._codColumn).SetCellValue(_cod._codName);
                 }
                 else
                 {
-                    sheetRepair.GetRow(mainFileTitle[1]._plannedCount_row - 1).GetCell(_cod._codColumn).SetCellValue(_cod._codName);
+                    sheetRepair.GetRow(mainFileTitle[0]._plannedCount_row - 1).GetCell(_cod._codColumn).SetCellValue(_cod._codName);
                 }
                 repairText = repairText + count + "、" + _cod._codName + "\n";
                 count++;
@@ -2320,13 +1352,13 @@ namespace RepairConstructionCount
                             _counter++;
                         }
                     }
-                    if(constructDepartList_rtb.Text.Length == 0)
-                    {
-                        constructDepartList_rtb.Text = consText;
-                    }
                     if(repairDeaprtList_rtb.Text.Length == 0)
                     {
                         repairDeaprtList_rtb.Text = repairText;
+                    }
+                    if(stationsList_rtb.Text.Length == 0)
+                    {
+                        stationsList_rtb.Text = "共"+stationCount+"个车站\n"+s_text;
                     }
                 }
             }
@@ -2348,6 +1380,29 @@ namespace RepairConstructionCount
 
         private void start_btn_Click(object sender, EventArgs e)
         {
+            refresh();
+            readMainFile();
+            readSubFiles();
+            if (stationController_rtb.Text.Length == 0)
+            {
+                int _counter = 1;
+                string allTemp = "";
+                foreach (string _temp in stationInController)
+                {
+                    allTemp = allTemp + _counter.ToString() + "、" + _temp.Replace("_", "->") + "\n";
+                    stationController_rtb.Text = allTemp;
+                    _counter++;
+                }
+            }
+            if (repairDeaprtList_rtb.Text.Length == 0)
+            {
+                repairDeaprtList_rtb.Text = repairText;
+            }
+            if (stationsList_rtb.Text.Length == 0)
+            {
+                stationsList_rtb.Text = "共"+stationCount+"个车站\n"+ s_text;
+            }
+            /*
             if (!fThread.IsAlive)
             {
                 sw.Start();
@@ -2359,6 +1414,8 @@ namespace RepairConstructionCount
                 Thread readSubFileThread = new Thread(new ThreadStart(readSubFiles));
                 readSubFileThread.Start();
             }
+            */
+
         }
 
         private void label3_Click(object sender, EventArgs e)

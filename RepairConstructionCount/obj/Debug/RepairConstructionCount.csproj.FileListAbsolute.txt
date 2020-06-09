@@ -9,7 +9,6 @@
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\bin\Debug\NPOI.OpenXmlFormats.dll
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\bin\Debug\CSkin.xml
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\bin\Debug\NPOI.xml
-\\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csprojResolveAssemblyReference.cache
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.Main.resources
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.Properties.Resources.resources
 \\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csproj.GenerateResource.Cache
@@ -34,3 +33,7 @@ E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstruct
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.exe
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.pdb
 E:\ZRC\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.Info.resources
+\\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csprojAssemblyReference.cache
+\\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.Info.resources
+\\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csproj.CoreCompileInputs.cache
+\\Mac\Home\Documents\GitHub\RepairConstructionCount\RepairConstructionCount\obj\Debug\RepairConstructionCount.csproj.CopyComplete
