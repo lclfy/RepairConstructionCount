@@ -457,6 +457,10 @@ namespace RepairConstructionCount
                             IRow row = _rs.GetRow(ij);
                             if(row != null)
                             {
+                                if(ij ==0 && (row.GetCell(0) == null || row.GetCell(0).ToString().Length == 0))
+                                {
+                                    MessageBox.Show("该表内某标签无站名，无法统计至调度台：" + _subFile + "\n第" + (repairSheet.IndexOf(_rs)+1) + "个标签","提示",MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                }
                                 if(row.GetCell(0) != null)
                                 {
                                     if (row.GetCell(0).ToString().Contains("综合天窗日统计表"))
